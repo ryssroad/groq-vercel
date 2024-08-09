@@ -47,7 +47,7 @@ async def generate_response(prompt):
     """Генерация ответа с использованием Groq API"""
     try:
         response = groq_client.chat.completions.create(
-            model="mixtral-8x7b-32768",
+            model="gemma2-9b-it",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.7,
             max_tokens=150
