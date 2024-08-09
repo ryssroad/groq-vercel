@@ -86,7 +86,7 @@ async def command_link_handler(message: Message) -> None:
         text = soup.get_text()
         
         # Ограничиваем длину текста
-        max_length = 1000
+        max_length = 5000
         if len(text) > max_length:
             text = text[:max_length] + "..."
         
