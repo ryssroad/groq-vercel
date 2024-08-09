@@ -72,35 +72,43 @@ def search_similar_chunks(query, index, chunks, k=3):
     D, I = index.search(query_vector, k)
     return [chunks[i] for i in I[0]]
 
-async def process_query(query):
-    relevant_chunks = search_similar_chunks(query, index, chunks)
-    context = "\n".join(relevant_chunks)
-    prompt = f"Based on the following context about Anthropic, answer the question: {query}\n\nContext:\n{context}"
-    response = await generate_response(prompt)
-    return response, relevant_chunks
-
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
-    await message.answer("Привет! Я бот, который может ответить на вопросы об Anthropic. Просто задайте свой вопрос, и я постараюсь на него ответить.")
+    await message.answer("Привет! Я бот, который может помочь с информацией об Anthropic. Используйте следующие команды:\n"
+                         "/ctx <запрос> - для поиска по контексту\n"
+                         "/ctxsum <запрос> - для суммаризации контекста")
+
+@dp.message(Command("ctx"))
+async def cmd_ctx(message: types.Message):
+    query = message.text.replace("/ctx", "").strip()
+    if not query:
+        await message.answer("Пожалуйста, укажите запрос после команды /ctx")
+        return
+
+    relevant_chunks = search_similar_chunks(query, index, chunks)
+    chunks_text = "\n\n".join([f"Чанк {i+1}:\n{chunk}" for i, chunk in enumerate(relevant_chunks)])
+    await message.answer(f"Релевантные чанки для запроса '{query}':")
+    await message.answer(chunks_text)
+
+@dp.message(Command("ctxsum"))
+async def cmd_ctxsum(message: types.Message):
+    query = message.text.replace("/ctxsum", "").strip()
+    if not query:
+        await message.answer("Пожалуйста, укажите запрос после команды /ctxsum")
+        return
+
+    relevant_chunks = search_similar_chunks(query, index, chunks)
+    context = "\n".join(relevant_chunks)
+    
+    summary_prompt = f"Summarize the following context about Anthropic, related to the query: {query}\n\nContext:\n{context}"
+    summary = await generate_response(summary_prompt)
+    
+    await message.answer(f"Суммаризация контекста для запроса '{query}':")
+    await message.answer(summary)
 
 @dp.message()
 async def message_handler(message: types.Message) -> None:
-    user_message = message.text
-
-    await message.answer("Обрабатываю ваш запрос...")
-
-    try:
-        response, relevant_chunks = await process_query(user_message)
-        
-        await message.answer("Сгенерированный ответ:")
-        await message.answer(response)
-        
-        chunks_text = "\n\n".join([f"Чанк {i+1}:\n{chunk}" for i, chunk in enumerate(relevant_chunks)])
-        await message.answer("Релевантные чанки:")
-        await message.answer(chunks_text)
-    except Exception as e:
-        logging.error(f"Ошибка при обработке сообщения: {e}")
-        await message.answer("Извините, произошла ошибка при обработке вашего запроса.")
+    await message.answer("Пожалуйста, используйте команды /ctx или /ctxsum для работы с контекстом.")
 
 async def main():
     logging.info("Запуск бота...")
