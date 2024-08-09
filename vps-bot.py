@@ -3,7 +3,7 @@ import logging
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
 from aiogram.types import Message
-from tavily import TavilyClient
+import tavily
 from ai import generateText
 from ai_sdk.openai import createOpenAI
 from dotenv import load_dotenv
@@ -28,7 +28,7 @@ bot = Bot(token=TELEGRAM_TOKEN)
 dp = Dispatcher()
 
 # Инициализация клиентов
-tavily_client = TavilyClient(api_key=TAVILY_API_KEY)
+tavily.api_key = TAVILY_API_KEY
 groq = createOpenAI({
     'baseURL': 'https://api.groq.com/openai/v1',
     'apiKey': GROQ_API_KEY,
@@ -63,7 +63,7 @@ async def command_summary_handler(message: Message) -> None:
     await message.answer("Ищу и суммирую последние новости по вашему запросу...")
     
     try:
-        news_results = tavily_client.search(query=query, search_depth="advanced", include_images=False, max_results=5)
+        news_results = tavily.search(query=query, search_depth="advanced", include_images=False, max_results=5)
         
         summary_prompt = "Summarize the following news results in Russian:\n\n"
         for result in news_results.get('results', []):
@@ -90,7 +90,7 @@ async def command_ask_handler(message: Message) -> None:
     await message.answer("Ищу ответ на ваш вопрос...")
     
     try:
-        answer = tavily_client.qna_search(query=query)
+        answer = tavily.qna_search(query=query)
         formatted_answer = f"Ответ на ваш вопрос:\n\n{answer}"
         await message.answer(formatted_answer)
     except Exception as e:
@@ -109,7 +109,7 @@ async def command_search_handler(message: Message) -> None:
     await message.answer("Выполняю поиск...")
     
     try:
-        search_results = tavily_client.search(query=query, search_depth="basic", include_images=False, max_results=5)
+        search_results = tavily.search(query=query, search_depth="basic", include_images=False, max_results=5)
         
         links = f"Результаты поиска по запросу '{query}':\n\n"
         for i, result in enumerate(search_results.get('results', []), 1):
