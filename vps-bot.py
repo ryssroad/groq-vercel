@@ -33,6 +33,13 @@ groq_client = OpenAI(
     api_key=GROQ_API_KEY
 )
 
+import aiohttp
+
+async def remove_webhook(bot_token):
+    async with aiohttp.ClientSession() as session:
+        async with session.get(f'https://api.telegram.org/bot{bot_token}/deleteWebhook') as resp:
+            return await resp.json()
+            
 async def generate_response(prompt):
     """Генерация ответа с использованием Groq API"""
     try:
@@ -136,6 +143,14 @@ async def message_handler(message: types.Message) -> None:
 
 async def main():
     """Основная функция для запуска бота"""
+    logging.info("Удаление вебхука...")
+    result = await remove_webhook(TELEGRAM_TOKEN)
+    if result.get('ok'):
+        logging.info("Вебхук успешно удален")
+    else:
+        logging.error(f"Ошибка при удалении вебхука: {result.get('description')}")
+        return
+
     logging.info("Запуск бота...")
     await dp.start_polling(bot)
 
