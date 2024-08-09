@@ -7,6 +7,8 @@ import tavily
 from openai import OpenAI
 from dotenv import load_dotenv
 import aiohttp
+import requests
+from bs4 import BeautifulSoup
 
 # Загрузка переменных окружения из файла .env
 load_dotenv()
@@ -58,8 +60,47 @@ async def generate_response(prompt):
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
     """Обработчик команды /start"""
-    await message.answer("Привет! Я бот, который может помочь вам с поиском информации и ответами на вопросы. Используйте команды /summary, /ask, или /search для начала работы.")
+    await message.answer("Привет! Я бот, который может помочь вам с поиском информации и ответами на вопросы. Используйте следующие команды:\n\n"
+                         "/summary - для получения сводки новостей по теме\n"
+                         "/ask - для быстрого ответа на вопрос\n"
+                         "/search - для поиска информации\n"
+                         "/link - для анализа содержимого веб-страницы по URL")
 
+@dp.message(Command("link"))
+async def command_link_handler(message: Message) -> None:
+    """Обработчик команды /link"""
+    url = message.text.replace("/link", "").strip()
+    
+    if not url:
+        await message.answer("Пожалуйста, укажите URL после команды /link")
+        return
+
+    await message.answer("Анализирую содержимое по ссылке...")
+    
+    try:
+        # Получаем содержимое страницы
+        response = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'})
+        soup = BeautifulSoup(response.content, 'html.parser')
+        
+        # Извлекаем текст
+        text = soup.get_text()
+        
+        # Ограничиваем длину текста
+        max_length = 1000
+        if len(text) > max_length:
+            text = text[:max_length] + "..."
+        
+        # Генерируем саммари
+        summary_prompt = f"Summarize the following content in Russian:\n\n{text}"
+        summary = await generate_response(summary_prompt)
+        
+        formatted_summary = f"Краткое содержание страницы {url}:\n\n{summary}"
+        
+        await message.answer(formatted_summary)
+    except Exception as e:
+        logging.error(f"Ошибка при анализе ссылки: {e}")
+        await message.answer("Извините, произошла ошибка при обработке вашего запроса.")
+        
 @dp.message(Command("summary"))
 async def command_summary_handler(message: Message) -> None:
     """Обработчик команды /summary"""
