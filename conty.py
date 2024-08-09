@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 import faiss
 import numpy as np
 from sentence_transformers import SentenceTransformer
+import deepl
 
 # Загрузка переменных окружения
 load_dotenv()
@@ -19,20 +20,22 @@ logging.basicConfig(level=logging.INFO)
 # Получение токенов из переменных окружения
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
 GROQ_API_KEY = os.getenv('GROQ_API_KEY')
+DEEPL_API_KEY = os.getenv('DEEPL_API_KEY')
 
 # Проверка наличия всех необходимых токенов
-if not all([TELEGRAM_TOKEN, GROQ_API_KEY]):
+if not all([TELEGRAM_TOKEN, GROQ_API_KEY, DEEPL_API_KEY]):
     raise ValueError("Отсутствуют необходимые переменные окружения")
 
 # Инициализация бота и диспетчера
 bot = Bot(token=TELEGRAM_TOKEN)
 dp = Dispatcher()
 
-# Инициализация клиента Groq
+# Инициализация клиентов
 groq_client = OpenAI(
     base_url="https://api.groq.com/openai/v1",
     api_key=GROQ_API_KEY
 )
+deepl_translator = deepl.Translator(DEEPL_API_KEY)
 
 # Пути к файлам
 index_path = "anthropic_embeddings.index"
@@ -74,9 +77,10 @@ def search_similar_chunks(query, index, chunks, k=3):
 
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
-    await message.answer("Привет! Я бот, который может помочь с информацией об Anthropic. Используйте следующие команды:\n"
+    await message.answer("Привет! Я бот, который может помочь с информацией об Anthropic и не только. Используйте следующие команды:\n"
                          "/ctx <запрос> - для поиска по контексту\n"
-                         "/ctxsum <запрос> - для суммаризации контекста")
+                         "/ctxsum <запрос> - для суммаризации контекста\n"
+                         "/ts <текст> - для перевода текста на русский")
 
 @dp.message(Command("ctx"))
 async def cmd_ctx(message: types.Message):
@@ -106,9 +110,29 @@ async def cmd_ctxsum(message: types.Message):
     await message.answer(f"Суммаризация контекста для запроса '{query}':")
     await message.answer(summary)
 
+@dp.message(Command("ts"))
+async def cmd_translate(message: types.Message):
+    text_to_translate = message.text.replace("/ts", "").strip()
+    if not text_to_translate and message.reply_to_message:
+        text_to_translate = message.reply_to_message.text
+    
+    if not text_to_translate:
+        await message.answer("Пожалуйста, укажите текст для перевода после команды /ts или ответьте на сообщение с текстом")
+        return
+
+    try:
+        result = deepl_translator.translate_text(text_to_translate, target_lang="RU")
+        await message.answer(f"Перевод:\n{result.text}")
+    except Exception as e:
+        logging.error(f"Ошибка при переводе: {e}")
+        await message.answer("Извините, произошла ошибка при переводе текста.")
+
 @dp.message()
 async def message_handler(message: types.Message) -> None:
-    await message.answer("Пожалуйста, используйте команды /ctx или /ctxsum для работы с контекстом.")
+    # Генерируем ответ на основе входящего сообщения
+    response = await generate_response(message.text)
+    await message.answer(response)
+    await message.answer("Вы также можете использовать команды /ctx или /ctxsum для работы с контекстом об Anthropic, или /ts для перевода.")
 
 async def main():
     logging.info("Запуск бота...")
