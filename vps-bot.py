@@ -50,7 +50,7 @@ async def generate_response(prompt):
             model="gemma2-9b-it",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.7,
-            max_tokens=150
+            max_tokens=750
         )
         return response.choices[0].message.content
     except Exception as e:
