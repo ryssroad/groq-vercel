@@ -49,7 +49,7 @@ async def generate_response(prompt):
         response = groq_client.chat.completions.create(
             model="gemma2-9b-it",
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.7,
+            temperature=0.95,
             max_tokens=750
         )
         return response.choices[0].message.content
