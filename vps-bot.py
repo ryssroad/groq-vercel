@@ -4,8 +4,7 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
 from aiogram.types import Message
 import tavily
-from ai import generateText
-from ai_sdk.openai import createOpenAI
+from openai import OpenAI
 from dotenv import load_dotenv
 
 # Загрузка переменных окружения из файла .env
@@ -29,19 +28,21 @@ dp = Dispatcher()
 
 # Инициализация клиентов
 tavily.api_key = TAVILY_API_KEY
-groq = createOpenAI({
-    'baseURL': 'https://api.groq.com/openai/v1',
-    'apiKey': GROQ_API_KEY,
-})
+groq_client = OpenAI(
+    base_url="https://api.groq.com/openai/v1",
+    api_key=GROQ_API_KEY
+)
 
 async def generate_response(prompt):
     """Генерация ответа с использованием Groq API"""
     try:
-        response = await generateText({
-            'model': groq('mixtral-8x7b-32768'),
-            'prompt': prompt,
-        })
-        return response.text
+        response = groq_client.chat.completions.create(
+            model="mixtral-8x7b-32768",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.7,
+            max_tokens=150
+        )
+        return response.choices[0].message.content
     except Exception as e:
         logging.error(f"Ошибка при обращении к Groq API: {e}")
         return "Извините, произошла ошибка при генерации ответа."
