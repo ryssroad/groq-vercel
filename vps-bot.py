@@ -6,6 +6,7 @@ from aiogram.types import Message
 import tavily
 from openai import OpenAI
 from dotenv import load_dotenv
+import aiohttp
 
 # Загрузка переменных окружения из файла .env
 load_dotenv()
