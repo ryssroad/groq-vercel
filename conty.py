@@ -70,7 +70,7 @@ async def generate_response(prompt):
         logging.error(f"Ошибка при обращении к Groq API: {e}")
         return "Извините, произошла ошибка при генерации ответа."
 
-def search_similar_chunks(query, index, chunks, k=3):
+def search_similar_chunks(query, index, chunks, k=7):
     query_vector = embedding_model.encode([query])
     D, I = index.search(query_vector, k)
     return [chunks[i] for i in I[0]]
