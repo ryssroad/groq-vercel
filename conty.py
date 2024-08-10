@@ -81,39 +81,36 @@ async def cmd_start(message: types.Message):
                          "/ctx <запрос> - для поиска по контексту\n"
                          "/ctxsum <запрос> - для суммаризации контекста\n"
                          "/ts <текст> - для перевода текста на русский")
-    
-@dp.message(Command("ctx"))
+    @dp.message(Command("ctx"))
 async def cmd_ctx(message: types.Message):
     query = message.text.replace("/ctx", "").strip()
     if not query:
-        await message.answer("Пожалуйста, укажите запрос после команды /ctx")
+        await message.answer("Пожалуйста, задайте вопрос после команды /ctx")
         return
 
-    relevant_chunks = search_similar_chunks(query, index, chunks)
-    
-    await message.answer(f"Релевантные чанки для запроса '{query}':")
-    
-    for i, chunk in enumerate(relevant_chunks, 1):
-        chunk_content = chunk['content']
-        chunk_text = f"Чанк {i}:\n{chunk_content}"
-        
-        # Разделяем длинный текст на части по 4000 символов
-        while chunk_text:
-            if len(chunk_text) <= 4000:
-                await message.answer(chunk_text)
-                break
-            else:
-                part = chunk_text[:4000]
-                last_newline = part.rfind('\n')
-                if last_newline != -1:
-                    part = part[:last_newline]
-                await message.answer(part)
-                chunk_text = chunk_text[len(part):]
+    await message.answer("Ищу информацию и формирую ответ...")
 
-def truncate_chunk(text, max_length=500):
-    if len(text) > max_length:
-        return text[:max_length] + "..."
-    return text
+    relevant_chunks = search_similar_chunks(query, index, chunks)
+    context = "\n\n".join([chunk['content'] for chunk in relevant_chunks])
+
+    prompt = f"""На основе следующего контекста о Swisstronik, пожалуйста, 
+    ответьте на вопрос: "{query}"
+
+    Контекст:
+    {context}
+
+    Пожалуйста, дайте подробный и структурированный ответ. Если информации 
+    недостаточно, укажите это. Если вопрос касается создания смарт-контракта, 
+    предоставьте пошаговое руководство с примерами кода, где это уместно."""
+
+    response = await generate_response(prompt)
+
+    # Разделяем ответ на части и отправляем
+    max_length = 4000
+    for i in range(0, len(response), max_length):
+        await message.answer(response[i:i+max_length])
+
+    await message.answer("Если у вас есть дополнительные вопросы или нужны уточнения, не стесняйтесь спрашивать!")
 
 @dp.message(Command("ctxsum"))
 async def cmd_ctxsum(message: types.Message):
