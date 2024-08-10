@@ -10,7 +10,6 @@ import faiss
 import numpy as np
 from sentence_transformers import SentenceTransformer
 import deepl
-from aiogram.utils.text import split_text
 
 # Загрузка переменных окружения
 load_dotenv()
