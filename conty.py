@@ -38,8 +38,8 @@ groq_client = OpenAI(
 deepl_translator = deepl.Translator(DEEPL_API_KEY)
 
 # Пути к файлам
-index_path = "anthropic_embeddings.index"
-chunks_path = "chunks.json"
+index_path = "swiss_embeddings.index"
+chunks_path = "swiss_chunks.json"
 
 # Загрузка модели для эмбеддингов
 model_name = "sentence-transformers/all-MiniLM-L6-v2"
@@ -74,14 +74,14 @@ def search_similar_chunks(query, index, chunks, k=3):
     query_vector = embedding_model.encode([query])
     D, I = index.search(query_vector, k)
     return [chunks[i] for i in I[0]]
-
+    
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
-    await message.answer("Привет! Я бот, который может помочь с информацией об Anthropic и не только. Используйте следующие команды:\n"
+    await message.answer("Привет! Я бот, который может помочь с информацией о Swisstronik. Используйте следующие команды:\n"
                          "/ctx <запрос> - для поиска по контексту\n"
                          "/ctxsum <запрос> - для суммаризации контекста\n"
                          "/ts <текст> - для перевода текста на русский")
-
+    
 @dp.message(Command("ctx"))
 async def cmd_ctx(message: types.Message):
     query = message.text.replace("/ctx", "").strip()
@@ -90,7 +90,7 @@ async def cmd_ctx(message: types.Message):
         return
 
     relevant_chunks = search_similar_chunks(query, index, chunks)
-    chunks_text = "\n\n".join([f"Чанк {i+1}:\n{chunk}" for i, chunk in enumerate(relevant_chunks)])
+    chunks_text = "\n\n".join([f"Чанк {i+1}:\n{chunk['content']}" for i, chunk in enumerate(relevant_chunks)])
     await message.answer(f"Релевантные чанки для запроса '{query}':")
     await message.answer(chunks_text)
 
@@ -102,9 +102,9 @@ async def cmd_ctxsum(message: types.Message):
         return
 
     relevant_chunks = search_similar_chunks(query, index, chunks)
-    context = "\n".join(relevant_chunks)
+    context = "\n".join([chunk['content'] for chunk in relevant_chunks])
     
-    summary_prompt = f"Summarize the following context about Anthropic, related to the query: {query}\n\nContext:\n{context}"
+    summary_prompt = f"Summarize the following context about Swisstronik, related to the query: {query}\n\nContext:\n{context}"
     summary = await generate_response(summary_prompt)
     
     await message.answer(f"Суммаризация контекста для запроса '{query}':")
