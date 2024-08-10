@@ -81,7 +81,7 @@ async def cmd_start(message: types.Message):
                          "/ctx <запрос> - для поиска по контексту\n"
                          "/ctxsum <запрос> - для суммаризации контекста\n"
                          "/ts <текст> - для перевода текста на русский")
-    @dp.message(Command("ctx"))
+@dp.message(Command("ctx"))
 async def cmd_ctx(message: types.Message):
     query = message.text.replace("/ctx", "").strip()
     if not query:
