@@ -56,21 +56,8 @@ def load_chunks():
 index = load_faiss_index()
 chunks = load_chunks()
 
-def safe_markdown_format(text):
-    # Экранируем специальные символы Markdown
-    escape_chars = '_*[]()~`>#+-=|{}.!'
-    escaped_text = ''.join(f'\\{char}' if char in escape_chars else char for char in text)
-    
-    # Дополнительно обрабатываем символ '#', который может быть проблематичным
-    escaped_text = escaped_text.replace('#', '\\#')
-    
-    return escaped_text
-    
-def escape_markdown(text):
-    escape_chars = '_*[]()~`>#+-=|{}.!'
-    return ''.join(f'\\{char}' if char in escape_chars else char for char in text)
-
 async def generate_response(prompt):
+    """Генерация ответа с использованием Groq API"""
     try:
         response = groq_client.chat.completions.create(
             model="gemma2-9b-it",
@@ -78,13 +65,10 @@ async def generate_response(prompt):
             temperature=0.7,
             max_tokens=750
         )
-        content = response.choices[0].message.content
-        # Применяем безопасное форматирование к полученному контенту
-        safe_content = safe_markdown_format(content)
-        return safe_content
+        return response.choices[0].message.content
     except Exception as e:
         logging.error(f"Ошибка при обращении к Groq API: {e}")
-        return safe_markdown_format("Извините, произошла ошибка при генерации ответа.")
+        return "Извините, произошла ошибка при генерации ответа."
 
 def search_similar_chunks(query, index, chunks, k=7):
     query_vector = embedding_model.encode([query])
@@ -93,19 +77,19 @@ def search_similar_chunks(query, index, chunks, k=7):
     
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
-    await message.answer(escape_markdown("Привет! Я бот, который может помочь с информацией о Swisstronik. Используйте следующие команды:\n"
+    await message.answer("Привет! Я бот, который может помочь с информацией о Swisstronik. Используйте следующие команды:\n"
                          "/ctx <запрос> - для поиска по контексту\n"
                          "/ctxsum <запрос> - для суммаризации контекста\n"
-                         "/ts <текст> - для перевода текста на русский"), parse_mode="MarkdownV2")
+                         "/ts <текст> - для перевода текста на русский")
 
 @dp.message(Command("ctx"))
 async def cmd_ctx(message: types.Message):
     query = message.text.replace("/ctx", "").strip()
     if not query:
-        await message.answer(safe_markdown_format("Пожалуйста, задайте вопрос после команды /ctx"), parse_mode="MarkdownV2")
+        await message.answer("Пожалуйста, задайте вопрос после команды /ctx")
         return
 
-    await message.answer(safe_markdown_format("Ищу информацию и формирую ответ..."), parse_mode="MarkdownV2")
+    await message.answer("Ищу информацию и формирую ответ...")
 
     relevant_chunks = search_similar_chunks(query, index, chunks)
     context = "\n\n".join([chunk['content'] for chunk in relevant_chunks])
@@ -125,15 +109,15 @@ async def cmd_ctx(message: types.Message):
     # Разделяем ответ на части и отправляем
     max_length = 4000
     for i in range(0, len(response), max_length):
-        await message.answer(response[i:i+max_length], parse_mode="MarkdownV2")
+        await message.answer(response[i:i+max_length])
 
-    await message.answer(safe_markdown_format("Если у вас есть дополнительные вопросы или нужны уточнения, не стесняйтесь спрашивать!"), parse_mode="MarkdownV2")
-    
+    await message.answer("Если у вас есть дополнительные вопросы или нужны уточнения, не стесняйтесь спрашивать!")
+
 @dp.message(Command("ctxsum"))
 async def cmd_ctxsum(message: types.Message):
     query = message.text.replace("/ctxsum", "").strip()
     if not query:
-        await message.answer(escape_markdown("Пожалуйста, укажите запрос после команды /ctxsum"), parse_mode="MarkdownV2")
+        await message.answer("Пожалуйста, укажите запрос после команды /ctxsum")
         return
 
     relevant_chunks = search_similar_chunks(query, index, chunks)
@@ -142,8 +126,8 @@ async def cmd_ctxsum(message: types.Message):
     summary_prompt = f"Summarize the following context about Swisstronik, related to the query: {query}\n\nContext:\n{context}"
     summary = await generate_response(summary_prompt)
     
-    await message.answer(escape_markdown(f"Суммаризация контекста для запроса '{query}':"), parse_mode="MarkdownV2")
-    await message.answer(summary, parse_mode="MarkdownV2")
+    await message.answer(f"Суммаризация контекста для запроса '{query}':")
+    await message.answer(summary)
 
 @dp.message(Command("ts"))
 async def cmd_translate(message: types.Message):
@@ -152,22 +136,22 @@ async def cmd_translate(message: types.Message):
         text_to_translate = message.reply_to_message.text
     
     if not text_to_translate:
-        await message.answer(escape_markdown("Пожалуйста, укажите текст для перевода после команды /ts или ответьте на сообщение с текстом"), parse_mode="MarkdownV2")
+        await message.answer("Пожалуйста, укажите текст для перевода после команды /ts или ответьте на сообщение с текстом")
         return
 
     try:
         result = deepl_translator.translate_text(text_to_translate, target_lang="RU")
-        await message.answer(escape_markdown(f"Перевод:\n{result.text}"), parse_mode="MarkdownV2")
+        await message.answer(f"Перевод:\n{result.text}")
     except Exception as e:
         logging.error(f"Ошибка при переводе: {e}")
-        await message.answer(escape_markdown("Извините, произошла ошибка при переводе текста."), parse_mode="MarkdownV2")
+        await message.answer("Извините, произошла ошибка при переводе текста.")
 
 @dp.message()
 async def message_handler(message: types.Message) -> None:
     # Генерируем ответ на основе входящего сообщения
     response = await generate_response(message.text)
-    await message.answer(response, parse_mode="MarkdownV2")
-    await message.answer(escape_markdown("Вы также можете использовать команды /ctx или /ctxsum для работы с контекстом об Anthropic, или /ts для перевода."), parse_mode="MarkdownV2")
+    await message.answer(response)
+    await message.answer("Вы также можете использовать команды /ctx или /ctxsum для работы с контекстом об Anthropic, или /ts для перевода.")
 
 async def main():
     logging.info("Запуск бота...")
