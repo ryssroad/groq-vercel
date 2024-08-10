@@ -56,12 +56,21 @@ def load_chunks():
 index = load_faiss_index()
 chunks = load_chunks()
 
+def safe_markdown_format(text):
+    # Экранируем специальные символы Markdown
+    escape_chars = '_*[]()~`>#+-=|{}.!'
+    escaped_text = ''.join(f'\\{char}' if char in escape_chars else char for char in text)
+    
+    # Дополнительно обрабатываем символ '#', который может быть проблематичным
+    escaped_text = escaped_text.replace('#', '\\#')
+    
+    return escaped_text
+    
 def escape_markdown(text):
     escape_chars = '_*[]()~`>#+-=|{}.!'
     return ''.join(f'\\{char}' if char in escape_chars else char for char in text)
 
 async def generate_response(prompt):
-    """Генерация ответа с использованием Groq API"""
     try:
         response = groq_client.chat.completions.create(
             model="gemma2-9b-it",
@@ -69,10 +78,13 @@ async def generate_response(prompt):
             temperature=0.7,
             max_tokens=750
         )
-        return escape_markdown(response.choices[0].message.content)
+        content = response.choices[0].message.content
+        # Применяем безопасное форматирование к полученному контенту
+        safe_content = safe_markdown_format(content)
+        return safe_content
     except Exception as e:
         logging.error(f"Ошибка при обращении к Groq API: {e}")
-        return escape_markdown("Извините, произошла ошибка при генерации ответа.")
+        return safe_markdown_format("Извините, произошла ошибка при генерации ответа.")
 
 def search_similar_chunks(query, index, chunks, k=7):
     query_vector = embedding_model.encode([query])
@@ -90,10 +102,10 @@ async def cmd_start(message: types.Message):
 async def cmd_ctx(message: types.Message):
     query = message.text.replace("/ctx", "").strip()
     if not query:
-        await message.answer(escape_markdown("Пожалуйста, задайте вопрос после команды /ctx"), parse_mode="MarkdownV2")
+        await message.answer(safe_markdown_format("Пожалуйста, задайте вопрос после команды /ctx"), parse_mode="MarkdownV2")
         return
 
-    await message.answer(escape_markdown("Ищу информацию и формирую ответ..."), parse_mode="MarkdownV2")
+    await message.answer(safe_markdown_format("Ищу информацию и формирую ответ..."), parse_mode="MarkdownV2")
 
     relevant_chunks = search_similar_chunks(query, index, chunks)
     context = "\n\n".join([chunk['content'] for chunk in relevant_chunks])
@@ -109,14 +121,13 @@ async def cmd_ctx(message: types.Message):
     предоставьте пошаговое руководство с примерами кода, где это уместно."""
 
     response = await generate_response(prompt)
-    escaped_response = escape_markdown(response)
-    
+
     # Разделяем ответ на части и отправляем
     max_length = 4000
-    for i in range(0, len(escaped_response), max_length):
-        await message.answer(escaped_response[i:i+max_length], parse_mode="MarkdownV2")
+    for i in range(0, len(response), max_length):
+        await message.answer(response[i:i+max_length], parse_mode="MarkdownV2")
 
-    await message.answer(escape_markdown("Если у вас есть дополнительные вопросы или нужны уточнения, не стесняйтесь спрашивать!"), parse_mode="MarkdownV2")
+    await message.answer(safe_markdown_format("Если у вас есть дополнительные вопросы или нужны уточнения, не стесняйтесь спрашивать!"), parse_mode="MarkdownV2")
     
 @dp.message(Command("ctxsum"))
 async def cmd_ctxsum(message: types.Message):
