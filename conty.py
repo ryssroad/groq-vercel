@@ -112,7 +112,7 @@ async def cmd_ctx(message: types.Message):
     escaped_response = escape_markdown(response)
     
     # Разделяем ответ на части и отправляем
-max_length = 4000
+    max_length = 4000
     for i in range(0, len(escaped_response), max_length):
         await message.answer(escaped_response[i:i+max_length], parse_mode="MarkdownV2")
 
