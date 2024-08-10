@@ -10,6 +10,7 @@ import faiss
 import numpy as np
 from sentence_transformers import SentenceTransformer
 import deepl
+from aiogram.utils.text import split_text
 
 # Загрузка переменных окружения
 load_dotenv()
@@ -91,8 +92,12 @@ async def cmd_ctx(message: types.Message):
 
     relevant_chunks = search_similar_chunks(query, index, chunks)
     chunks_text = "\n\n".join([f"Чанк {i+1}:\n{chunk['content']}" for i, chunk in enumerate(relevant_chunks)])
+    
     await message.answer(f"Релевантные чанки для запроса '{query}':")
-    await message.answer(chunks_text)
+    
+    # Разделяем длинное сообщение на части
+    for text_part in split_text(chunks_text, max_length=4096):
+        await message.answer(text_part)
 
 @dp.message(Command("ctxsum"))
 async def cmd_ctxsum(message: types.Message):
