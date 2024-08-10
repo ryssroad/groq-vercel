@@ -62,10 +62,17 @@ async def generate_response(prompt):
         response = groq_client.chat.completions.create(
             model="gemma2-9b-it",
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.7,
+            temperature=0.9,
             max_tokens=750
         )
+        # Логирование сырого ответа
+        logger.info(f"Сырой ответ от Groq API: {response}")
+
         return response.choices[0].message.content
+
+        # Логирование извлеченного контента
+        logger.info(f"Извлеченный контент: {content}")
+        
     except Exception as e:
         logging.error(f"Ошибка при обращении к Groq API: {e}")
         return "Извините, произошла ошибка при генерации ответа."
