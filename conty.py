@@ -91,13 +91,30 @@ async def cmd_ctx(message: types.Message):
         return
 
     relevant_chunks = search_similar_chunks(query, index, chunks)
-    chunks_text = "\n\n".join([f"Чанк {i+1}:\n{chunk['content']}" for i, chunk in enumerate(relevant_chunks)])
     
     await message.answer(f"Релевантные чанки для запроса '{query}':")
     
-    # Разделяем длинное сообщение на части
-    for text_part in split_text(chunks_text, max_length=4096):
-        await message.answer(text_part)
+    for i, chunk in enumerate(relevant_chunks, 1):
+        chunk_content = chunk['content']
+        chunk_text = f"Чанк {i}:\n{chunk_content}"
+        
+        # Разделяем длинный текст на части по 4000 символов
+        while chunk_text:
+            if len(chunk_text) <= 4000:
+                await message.answer(chunk_text)
+                break
+            else:
+                part = chunk_text[:4000]
+                last_newline = part.rfind('\n')
+                if last_newline != -1:
+                    part = part[:last_newline]
+                await message.answer(part)
+                chunk_text = chunk_text[len(part):]
+
+def truncate_chunk(text, max_length=500):
+    if len(text) > max_length:
+        return text[:max_length] + "..."
+    return text
 
 @dp.message(Command("ctxsum"))
 async def cmd_ctxsum(message: types.Message):
