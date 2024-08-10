@@ -14,8 +14,9 @@ import deepl
 # Загрузка переменных окружения
 load_dotenv()
 
-# Настройка логирования
-logging.basicConfig(level=logging.INFO)
+# Настройка логирования (если еще не настроено)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 # Получение токенов из переменных окружения
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
