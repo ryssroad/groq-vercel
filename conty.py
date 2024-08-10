@@ -109,14 +109,15 @@ async def cmd_ctx(message: types.Message):
     предоставьте пошаговое руководство с примерами кода, где это уместно."""
 
     response = await generate_response(prompt)
-
+    escaped_response = escape_markdown(response)
+    
     # Разделяем ответ на части и отправляем
-    max_length = 4000
-    for i in range(0, len(response), max_length):
-        await message.answer(response[i:i+max_length], parse_mode="MarkdownV2")
+max_length = 4000
+    for i in range(0, len(escaped_response), max_length):
+        await message.answer(escaped_response[i:i+max_length], parse_mode="MarkdownV2")
 
     await message.answer(escape_markdown("Если у вас есть дополнительные вопросы или нужны уточнения, не стесняйтесь спрашивать!"), parse_mode="MarkdownV2")
-
+    
 @dp.message(Command("ctxsum"))
 async def cmd_ctxsum(message: types.Message):
     query = message.text.replace("/ctxsum", "").strip()
